@@ -1,0 +1,35 @@
+name: Sync Upstream OurAirports Data
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # Every day at 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Fetch upstream CSV data (conflict-free)
+        run: |
+          git remote add upstream https://github.com/davidmegginson/ourairports-data.git
+          git fetch --depth 1 upstream main
+          git checkout upstream/main -- airports.csv countries.csv regions.csv runways.csv airport-frequencies.csv navaids.csv airport-comments.csv
+
+      - name: Commit and push updated CSVs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --cached --quiet; then
+            echo "No upstream CSV changes."
+            exit 0
+          fi
+          git commit -m "chore(data): sync upstream CSVs from davidmegginson/ourairports-data"
+          git push
